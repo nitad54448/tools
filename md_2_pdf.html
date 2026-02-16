@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Markdown 2 PDF </title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- MathJax CONFIG -->
+<script>
+window.MathJax = {
+    tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']],
+        processEscapes: true
+    },
+    options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    },
+    svg: {
+        scale: 1,
+        fontCache: 'none',
+        mtextInheritFont: false,
+        merrorInheritFont: false,
+        mathmlSpacing: false,
+        exFactor: 0.5
+    },
+    chtml: {
+        matchFontHeight: false
+    },
+    startup: {
+        typeset: false
+    }
+};
+</script>
+
+<!-- MathJax library -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<!-- Markdown parser -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+/* ===== SCREEN LAYOUT ===== */
+@media screen {
+    html, body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #f3f4f6;
+    }
+
+    .main-container {
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+    }
+
+    .panel {
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .editor-panel {
+        background: white;
+        border-right: 1px solid #e5e7eb;
+    }
+
+    .preview-panel {
+        background: #f9fafb;
+        overflow-y: auto;
+    }
+
+    .editor-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        flex-shrink: 0;
+    }
+
+    .editor-textarea {
+        flex: 1;
+        width: 100%;
+        border: none;
+        padding: 20px;
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        resize: none;
+        outline: none;
+        background: white;
+    }
+
+    .editor-textarea:focus {
+        background: #fafafa;
+    }
+
+    .preview-header {
+        position: sticky;
+        top: 0;
+        background: #f9fafb;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .preview-title {
+        font-weight: 600;
+        color: #374151;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        height: 36px;
+        min-width: 120px;
+        box-sizing: border-box;
+        line-height: 1;
+    }
+
+    .upload-btn {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .upload-btn:hover {
+        background: #dbeafe;
+    }
+
+    .print-btn {
+        background: #2563eb;
+        color: white;
+    }
+
+    .print-btn:hover {
+        background: #1d4ed8;
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .pdf-container {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 20px auto;
+        background: white;
+        padding: 20mm 15mm;
+        box-sizing: border-box;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* ===== PRINT LAYOUT ===== */
+@media print {
+    @page {
+        size: A4;
+        margin: 20mm 15mm;
+    }
+
+    /* Reset everything */
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+
+    /* Hide the UI elements */
+    .main-container {
+        display: block !important;
+        height: auto !important;
+    }
+
+    .editor-panel,
+    .editor-header,
+    .editor-textarea,
+    .preview-header {
+        display: none !important;
+    }
+
+    .preview-panel {
+        display: block !important;
+        overflow: visible !important;
+        background: white !important;
+        height: auto !important;
+    }
+
+    .pdf-container {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        min-height: 0 !important;
+        background: white !important;
+    }
+
+    /* Page break control */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    pre, blockquote, img, table {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    tr, li {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Ensure links print properly */
+    a {
+        color: #000 !important;
+        text-decoration: none !important;
+    }
+
+    a[href]:after {
+        content: none !important;
+    }
+}
+
+/* CONTENT STYLES (Both screen and print)  */
+.pdf-container {
+    font-family: Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #000;
+    font-size: 11pt;
+    font-weight: normal;
+}
+
+.pdf-container h1 {
+    font-size: 24pt;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-weight: bold;
+}
+
+.pdf-container h2 {
+    font-size: 18pt;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-weight: bold;
+}
+
+.pdf-container h3 {
+    font-size: 14pt;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.pdf-container h4 {
+    font-size: 12pt;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.pdf-container p {
+    margin-bottom: 12px;
+    text-align: justify;
+}
+
+.pdf-container ul, 
+.pdf-container ol {
+    padding-left: 22px;
+    margin-bottom: 12px;
+}
+
+.pdf-container li {
+    margin-bottom: 4px;
+}
+
+.pdf-container pre {
+    background: #f6f8fa;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+    line-height: 1.4;
+    margin: 12px 0;
+    border: 1px solid #e5e7eb;
+}
+
+.pdf-container code {
+    font-family: Courier, 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.pdf-container pre code {
+    background: transparent;
+    padding: 0;
+}
+
+.pdf-container code:not(pre code) {
+    background: #f6f8fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.pdf-container img {
+    max-width: 100%;
+    display: block;
+    margin: 16px auto;
+}
+
+.pdf-container blockquote {
+    border-left: 4px solid #ddd;
+    padding-left: 16px;
+    margin: 12px 0;
+    color: #666;
+    font-style: italic;
+}
+
+.pdf-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 10pt;
+}
+
+.pdf-container th, 
+.pdf-container td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: left;
+}
+
+.pdf-container th {
+    background: #f6f8fa;
+    font-weight: bold;
+}
+
+.pdf-container a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.pdf-container a:hover {
+    text-decoration: underline;
+}
+
+.pdf-container strong {
+    font-weight: bold;
+}
+
+.pdf-container em {
+    font-style: italic;
+}
+
+/* MathJax */
+mjx-container {
+    display: inline-block !important;
+    margin: 0 2px;
+    font-weight: normal !important;
+}
+
+mjx-container[display="true"] {
+    display: block !important;
+    margin: 1em 0 !important;
+    text-align: center;
+}
+
+mjx-container *,
+mjx-math,
+mjx-math *,
+mjx-container svg,
+mjx-container svg * {
+    font-weight: normal !important;
+}
+
+/* Target SVG text and paths specifically */
+mjx-container svg text,
+mjx-container svg path,
+mjx-container svg g {
+    font-weight: normal !important;
+    stroke-width: 0.5 !important;
+}
+
+@media print {
+    mjx-container,
+    mjx-container *,
+    mjx-math,
+    mjx-math *,
+    mjx-container svg,
+    mjx-container svg * {
+        font-weight: normal !important;
+        -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Reduce stroke width in print to prevent bold appearance */
+    mjx-container svg text,
+    mjx-container svg path,
+    mjx-container svg g {
+        font-weight: normal !important;
+        stroke-width: 0 !important;
+        stroke: none !important;
+    }
+    
+    /* Override any bold font variants */
+    mjx-container svg text[font-weight],
+    mjx-container svg [font-weight] {
+        font-weight: normal !important;
+    }
+    
+    /* Target all possible MathJax elements */
+    mjx-container svg > g,
+    mjx-container svg > g > *,
+    mjx-container svg text {
+        font-weight: 400 !important;
+    }
+}
+
+/* Print-specific adjustments */
+@media print {
+    .pdf-container pre {
+        background: #f6f8fa !important;
+        border: 1px solid #ddd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .pdf-container code:not(pre code) {
+        background: #f6f8fa !important;
+        border: 1px solid #ddd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .pdf-container th {
+        background: #f6f8fa !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .pdf-container h1,
+    .pdf-container h2 {
+        border-bottom-color: #ddd !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- LEFT PANEL: EDITOR -->
+    <div class="panel editor-panel">
+        <div class="editor-header">
+            <h2 class="text-lg font-bold text-gray-800">Markdown Input</h2>
+            <label class="action-btn upload-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload MD
+                <input type="file" id="fileInput" accept=".md,.txt">
+            </label>
+        </div>
+
+        <textarea id="editor" 
+                  class="editor-textarea" 
+                  placeholder="# Example Document
+
+Inline math: $a^2 + b^2 = c^2$
+
+Display math:
+$$
+E = mc^2
+$$
+
+## Features
+- **Bold** and *italic* text
+- Lists and tables
+- Code blocks
+- Mathematical expressions
+
+## Code Example
+```python
+def hello():
+    print('Hello, World!')
+```
+
+## Table Example
+| Column 1 | Column 2 |
+|----------|----------|
+| Data 1   | Data 2   |
+| Data 3   | Data 4   |"></textarea>
+    </div>
+
+    <!-- RIGHT PANEL: PREVIEW -->
+    <div class="panel preview-panel">
+        <div class="preview-header">
+            <span class="preview-title">PDF Preview</span>
+            <button id="printBtn" class="action-btn print-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print PDF
+            </button>
+        </div>
+        
+        <div class="pdf-container" id="preview">
+            <p style="color: #9ca3af; font-style: italic;">Start typing to see preview...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const fileInput = document.getElementById('fileInput');
+const printBtn = document.getElementById('printBtn');
+
+let isRendering = false;
+let mathJaxReady = false;
+
+console.log('Script initialized');
+
+// Initialize marked
+if (typeof marked !== 'undefined') {
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+    console.log('Marked configured');
+}
+
+// Wait for MathJax
+if (typeof MathJax !== 'undefined') {
+    MathJax.startup.promise.then(() => {
+        mathJaxReady = true;
+        console.log('MathJax ready');
+    }).catch(err => {
+        console.error('MathJax error:', err);
+        mathJaxReady = true;
+    });
+} else {
+    console.warn('MathJax not available');
+    mathJaxReady = true;
+}
+
+/* Debounce */
+let timer;
+function debounce(fn, delay) {
+    return function() {
+        clearTimeout(timer);
+        timer = setTimeout(fn, delay);
+    };
+}
+
+/* Render Markdown */
+async function renderMarkdown() {
+    if (isRendering) {
+        console.log('Already rendering...');
+        return;
+    }
+    
+    isRendering = true;
+    console.log('Starting render...');
+    
+    try {
+        const content = editor.value;
+        
+        if (!content || content.trim() === '') {
+            preview.innerHTML = '<p style="color: #9ca3af; font-style: italic;">Start typing to see preview...</p>';
+            isRendering = false;
+            return;
+        }
+        
+        console.log('Content length:', content.length);
+        
+        // Clear MathJax if available
+        if (mathJaxReady && typeof MathJax !== 'undefined' && MathJax.typesetClear) {
+            await MathJax.typesetClear([preview]);
+        }
+        
+        // Parse markdown
+        if (typeof marked === 'undefined') {
+            preview.innerHTML = '<p style="color: red;">Error: Marked.js not loaded</p>';
+            isRendering = false;
+            return;
+        }
+        
+        const html = marked.parse(content);
+        console.log('HTML generated, length:', html.length);
+        
+        preview.innerHTML = html;
+        console.log('Preview innerHTML set');
+        
+        // Typeset math
+        if (mathJaxReady && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+            console.log('Typesetting math...');
+            await MathJax.typesetPromise([preview]);
+            console.log('Math typeset complete');
+        }
+        
+        console.log('Render complete');
+        
+    } catch (error) {
+        console.error('Render error:', error);
+        preview.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+    } finally {
+        isRendering = false;
+    }
+}
+
+// Event listeners
+editor.addEventListener('input', debounce(renderMarkdown, 300));
+
+fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        editor.value = e.target.result;
+        renderMarkdown();
+    };
+    reader.readAsText(file);
+});
+
+/* Print PDF */
+printBtn.addEventListener('click', () => {
+    console.log('Print button clicked');
+    console.log('Preview HTML length:', preview.innerHTML.length);
+    console.log('Preview HTML sample:', preview.innerHTML.substring(0, 200));
+    
+    // Check if there's content
+    if (!preview.innerHTML || preview.innerHTML.includes('Start typing')) {
+        alert('Please add some content first!');
+        return;
+    }
+    
+    // Fix MathJax bold issue before printing
+    fixMathJaxForPrint();
+    
+    // Trigger print
+    console.log('Calling window.print()');
+    window.print();
+});
+
+/* Fix MathJax bold rendering in print */
+function fixMathJaxForPrint() {
+    // Remove font-weight attributes from all SVG elements
+    const svgElements = preview.querySelectorAll('mjx-container svg *[font-weight]');
+    svgElements.forEach(el => {
+        el.removeAttribute('font-weight');
+        el.setAttribute('font-weight', 'normal');
+    });
+    
+    // Also target text elements specifically
+    const textElements = preview.querySelectorAll('mjx-container svg text');
+    textElements.forEach(el => {
+        el.style.fontWeight = 'normal';
+        el.setAttribute('font-weight', 'normal');
+    });
+    
+    // Remove stroke from paths that might appear bold
+    const paths = preview.querySelectorAll('mjx-container svg path');
+    paths.forEach(el => {
+        if (el.getAttribute('stroke-width')) {
+            el.setAttribute('stroke-width', '0');
+        }
+    });
+    
+    console.log('Fixed MathJax elements for print');
+}
+
+console.log('Event listeners attached');
+</script>
+
+</body>
+</html>
