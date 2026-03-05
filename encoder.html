@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Optical Encoder Studio</title>
+    <style>
+        /* CSS Variables - Defined by the user image style */
+        :root { 
+            --bg-main: #101828; /* Main left background */
+            --panel-bg: #1f293a; /* Dark panels */
+            --text-light: #ffffff; /* Main light text */
+            --text-gray: #94a3b8; /* Descriptive light text */
+            --control-label: #ffffff; /* Label text */
+            --control-select-bg: #1f293a; /* Select/input background */
+            --control-select-text: #ffffff; /* Select/input text */
+            --control-select-border: #374151; /* Subtle border */
+            --canvas-bg: #f8fafc; /* Right side main canvas background */
+            --canvas-svg-dark: #1e293b; /* Dark encoder markers */
+            --canvas-svg-light: #f1f5f9; /* Light encoder disk base */
+            --footer-text: #6b7280; /* Footer grey */
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            margin: 0; 
+            background: var(--bg-main); 
+            display: flex; 
+            flex-direction: row; 
+            min-height: 100vh;
+        }
+
+        /* Left side container (Controls) */
+        .left-panel { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+            width: 350px; 
+            padding: 40px; 
+            color: var(--text-light); 
+        }
+
+        h1 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-light); }
+        .description { font-size: 14px; line-height: 1.6; color: var(--text-gray); }
+
+
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-top: 20px; /* Keeps some vertical spacing between sections */
+        }
+
+        /* Information blocks matching the user image content */
+        .block-title { font-size: 18px; font-weight: 600; color: var(--text-light); }
+        .block-text { font-size: 14px; color: var(--text-gray); line-height: 1.5; }
+
+
+
+        /* Control label and input style */
+        label { display: flex; flex-direction: column; font-size: 13px; font-weight: 600; color: var(--text-gray); }
+        input, select { 
+            background: var(--control-select-bg);
+            color: var(--control-select-text);
+            padding: 10px; 
+            margin-top: 6px; 
+            border: 2px solid var(--control-select-border); 
+            border-radius: 8px; 
+            font-size: 14px; 
+            transition: border 0.3s ease; 
+            outline: none; 
+        }
+        input:focus, select:focus { border-color: var(--text-light); }
+
+        /* Button group at the end */
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { 
+            flex: 1; 
+            padding: 12px; 
+            background: var(--panel-bg);
+            color: var(--text-light);
+            border: 2px solid var(--control-select-border);
+            border-radius: 8px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: transform 0.1s, opacity 0.2s, background 0.3s, border-color 0.3s;
+        }
+        button:hover { background: #334155; border-color: var(--text-gray); }
+        button:active { transform: scale(0.97); }
+
+        /* Track width specific visibility logic */
+        #trackWidthContainer label { margin-top: 0; }
+        #trackWidthContainer { display: flex; gap: 10px; margin-top: 16px; align-items: flex-end; }
+
+        /* Footer matching user image */
+        .footer {
+            margin-top: auto;
+            font-size: 12px;
+            color: var(--footer-text);
+            text-align: left;
+        }
+
+        /* Right side container (Canvas) */
+        .canvas-container { 
+            flex: 1; 
+            background: var(--canvas-bg); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+        }
+        svg { width: 600px; height: 600px; }
+
+        /* Print styles */
+        @media print {
+            body { background: white; padding: 0; display: block; }
+            .left-panel { display: none; }
+            .canvas-container { padding: 0; width: 100%; height: 100vh; }
+            svg { width: 100%; height: 100vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="left-panel">
+        <div class="info-panel">
+            <div class="block-title">Optical Encoder Settings</div>
+            
+            <label>Disk Outer Dia. (mm): <input type="number" id="dOut" value="100" oninput="generateEncoder()"></label>
+            <label>Disk Inner Hole Dia. (mm): <input type="number" id="dIn" value="10" oninput="generateEncoder()"></label>
+            <label>Markers Outer Dia. (mm): <input type="number" id="mOut" value="90" oninput="generateEncoder()"></label>
+            <label>Markers Inner Dia. (mm): <input type="number" id="mIn" value="40" oninput="generateEncoder()"></label>
+            <label>Total Markers / Resolution: <input type="number" id="nMarkers" value="64" oninput="generateEncoder()"></label>
+            <label>Pattern Mode: 
+                <select id="mode" oninput="generateEncoder()">
+                    <option value="incremental">Incremental</option>
+                    <option value="absolute">Absolute (Gray Code)</option>
+                </select>
+            </label>
+            <div id="trackWidthContainer" style="display: none;">
+                <label>Track Width (mm): <input type="number" id="trackWidth" value="3" step="0.1" oninput="generateEncoder()"></label>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-pdf" onclick="window.print()">Save PDF</button>
+                <button class="btn-svg" onclick="saveSVG()">Save CAD SVG</button>
+            </div>
+        </div>
+
+
+
+        <div class="footer">NitaD, Univ Paris-Saclay, version August 8, 2025</div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container"></div>
+
+    <script>
+        let currentSVGContent = "";
+
+        // Function for constraints management
+        function enforceConstraints() {
+            let dOut = parseFloat(document.getElementById('dOut').value) || 0;
+            let dIn = parseFloat(document.getElementById('dIn').value) || 0;
+            let mOut = parseFloat(document.getElementById('mOut').value) || 0;
+            let mIn = parseFloat(document.getElementById('mIn').value) || 0;
+            let tWidth = parseFloat(document.getElementById('trackWidth').value) || 1;
+            const mode = document.getElementById('mode').value;
+            const nMarkers = parseInt(document.getElementById('nMarkers').value) || 2;
+
+            // Toggle visibility of the Track Width input container
+            document.getElementById('trackWidthContainer').style.display = (mode === 'absolute') ? 'block' : 'none';
+
+            // Basic physical limits (2mm minimum spacing)
+            if (dIn < 0) dIn = 0;
+            if (dOut <= dIn + 4) dOut = dIn + 4; // Min disk width is hole + 4mm
+            if (mOut > dOut - 2) mOut = dOut - 2; // Min marker spacing from edge is 2mm
+
+            // Force the inner marker diameter to match exact sensor track widths
+            if (mode === 'absolute') {
+                const bits = Math.ceil(Math.log2(nMarkers));
+                mIn = mOut - (2 * bits * tWidth);
+            }
+            
+            // Protect against drawing into the center hole (with spacing)
+            if (mIn < dIn + 2) {
+                mIn = dIn + 2;
+                if (mode === 'absolute') {
+                    // Recalculate track width if spacing is too small
+                    const bits = Math.ceil(Math.log2(nMarkers));
+                    tWidth = (mOut - mIn) / (2 * bits);
+                    document.getElementById('trackWidth').value = tWidth.toFixed(2);
+                }
+            }
+            if (mOut <= mIn) mOut = mIn + 1; // Prevent inverted markers
+
+            // Write corrected values back to the UI
+            document.getElementById('dOut').value = dOut;
+            document.getElementById('dIn').value = dIn;
+            document.getElementById('mOut').value = mOut;
+            document.getElementById('mIn').value = mIn;
+            
+            return { rOut: dOut/2, rIn: dIn/2, rMOut: mOut/2, rMIn: mIn/2, tWidth: tWidth };
+        }
+
+        // SVG generation function
+        function polarToCartesian(r, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return { x: r * Math.cos(angleInRadians), y: r * Math.sin(angleInRadians) };
+        }
+
+        function describeArc(innerR, outerR, startAngle, endAngle) {
+            const startOuter = polarToCartesian(outerR, endAngle);
+            const endOuter = polarToCartesian(outerR, startAngle);
+            const startInner = polarToCartesian(innerR, endAngle);
+            const endInner = polarToCartesian(innerR, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+            
+            return [
+                "M", startOuter.x, startOuter.y,
+                "A", outerR, outerR, 0, largeArcFlag, 0, endOuter.x, endOuter.y,
+                "L", endInner.x, endInner.y,
+                "A", innerR, innerR, 0, largeArcFlag, 1, startInner.x, startInner.y,
+                "Z"
+            ].join(" ");
+        }
+
+        function generateEncoder() {
+            // Apply constraints and get corrected values
+            const radii = enforceConstraints();
+            const rOut = radii.rOut;
+            const rIn = radii.rIn;
+            const rMOut = radii.rMOut;
+            const rMIn = radii.rMIn;
+            const trackWidth = radii.tWidth;
+            
+            const nMarkers = parseInt(document.getElementById('nMarkers').value) || 2;
+            const mode = document.getElementById('mode').value;
+            
+            // Draw base disk and center hole, using new light SVG colors
+            let svgContent = `<circle cx="0" cy="0" r="${rOut}" fill="var(--canvas-svg-light)" stroke="var(--control-select-border)" stroke-width="0.5" />`;
+            svgContent += `<circle cx="0" cy="0" r="${rIn}" fill="#ffffff" stroke="var(--control-select-border)" stroke-width="0.5" />`;
+
+            let paths = "";
+            
+            if (mode === 'incremental') {
+                // Alternating light/dark stripes
+                const angleStep = 360 / (nMarkers * 2);
+                for (let i = 0; i < nMarkers * 2; i += 2) {
+                    paths += describeArc(rMIn, rMOut, i * angleStep, (i + 1) * angleStep) + " ";
+                }
+            } else {
+                // Absolute positioning using Gray Code
+                const bits = Math.ceil(Math.log2(nMarkers));
+                const maxSteps = Math.pow(2, bits); 
+                const angleStep = 360 / maxSteps; 
+                
+                for (let t = 0; t < bits; t++) {
+                    const trIn = rMIn + (t * trackWidth);
+                    const trOut = rMIn + ((t + 1) * trackWidth);
+                    
+                    for (let i = 0; i < maxSteps; i++) {
+                        const gray = i ^ (i >> 1);
+                        if ((gray >> (bits - 1 - t)) & 1) { 
+                            paths += describeArc(trIn, trOut, i * angleStep, (i + 1) * angleStep) + " ";
+                        }
+                    }
+                }
+            }
+
+            // Render all dark markers at once for performance
+            svgContent += `<path d="${paths}" fill="var(--canvas-svg-dark)" />`;
+            
+            // Apply to DOM, centered in the right panel
+            const viewBoxSize = (rOut * 2) + 20;
+            currentSVGContent = `<svg viewBox="${-viewBoxSize/2} ${-viewBoxSize/2} ${viewBoxSize} ${viewBoxSize}" xmlns="http://www.w3.org/2000/svg">${svgContent}</svg>`;
+            document.getElementById('canvas-container').innerHTML = currentSVGContent;
+        }
+
+        // SVG download function
+        function saveSVG() {
+            const blob = new Blob([currentSVGContent], {type: "image/svg+xml;charset=utf-8"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "encoder_design.svg";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Draw initially on load
+        window.onload = generateEncoder;
+    </script>
+</body>
+</html>
