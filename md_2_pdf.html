@@ -11,13 +11,18 @@
 <!-- MathJax CONFIG -->
 <script>
 window.MathJax = {
+    loader: { load: ['ui/safe'] },
     tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$','$$'], ['\\[','\\]']],
         processEscapes: true
     },
     options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        safeOptions: {
+            allow: { URLs: 'safe', classes: 'safe', cssIDs: 'safe', styles: 'safe' },
+            safeProtocols: { http: true, https: true, file: false, javascript: false, data: false }
+        }
     },
     svg: {
         scale: 1,
@@ -41,6 +46,8 @@ window.MathJax = {
 
 <!-- Markdown parser -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- DOMPurify 3.4.17: sanitize imported HTML before it enters the live DOM. -->
+<script src="./vendor/purify.min.js"></script>
 
 <style>
 /* ===== SCREEN LAYOUT ===== */
@@ -585,7 +592,7 @@ if (typeof MathJax !== 'undefined') {
         console.log('MathJax ready');
     }).catch(err => {
         console.error('MathJax error:', err);
-        mathJaxReady = true;
+        mathJaxReady = false;
     });
 } else {
     console.warn('MathJax not available');
@@ -637,7 +644,16 @@ async function renderMarkdown() {
         const html = marked.parse(content);
         console.log('HTML generated, length:', html.length);
         
-        preview.innerHTML = html;
+        if (typeof DOMPurify === 'undefined' || !DOMPurify.isSupported) {
+            throw new Error('HTML sanitizer unavailable. Reload with the vendor folder beside this page.');
+        }
+        const safeContent = DOMPurify.sanitize(html, {
+            USE_PROFILES: { html: true },
+            FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'option'],
+            FORBID_ATTR: ['style', 'id', 'name'],
+            RETURN_DOM_FRAGMENT: true
+        });
+        preview.replaceChildren(safeContent);
         console.log('Preview innerHTML set');
         
         // Typeset math
@@ -651,7 +667,7 @@ async function renderMarkdown() {
         
     } catch (error) {
         console.error('Render error:', error);
-        preview.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        preview.textContent = 'Error: ' + error.message;
     } finally {
         isRendering = false;
     }
