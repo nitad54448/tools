@@ -176,7 +176,7 @@
 
             // Force the inner marker diameter to match exact sensor track widths
             if (mode === 'absolute') {
-                const bits = Math.ceil(Math.log2(nMarkers));
+                const bits = Math.max(1, Math.ceil(Math.log2(Math.max(2, nMarkers))));
                 mIn = mOut - (2 * bits * tWidth);
             }
             
@@ -185,7 +185,7 @@
                 mIn = dIn + 2;
                 if (mode === 'absolute') {
                     // Recalculate track width if spacing is too small
-                    const bits = Math.ceil(Math.log2(nMarkers));
+                    const bits = Math.max(1, Math.ceil(Math.log2(Math.max(2, nMarkers))));
                     tWidth = (mOut - mIn) / (2 * bits);
                     document.getElementById('trackWidth').value = tWidth.toFixed(2);
                 }
@@ -235,9 +235,9 @@
             const nMarkers = parseInt(document.getElementById('nMarkers').value) || 2;
             const mode = document.getElementById('mode').value;
             
-            // Draw base disk and center hole, using new light SVG colors
-            let svgContent = `<circle cx="0" cy="0" r="${rOut}" fill="var(--canvas-svg-light)" stroke="var(--control-select-border)" stroke-width="0.5" />`;
-            svgContent += `<circle cx="0" cy="0" r="${rIn}" fill="#ffffff" stroke="var(--control-select-border)" stroke-width="0.5" />`;
+            // Draw base disk and center hole using literal hex colors so exported SVG files remain valid standalone
+            let svgContent = `<circle cx="0" cy="0" r="${rOut}" fill="#f1f5f9" stroke="#374151" stroke-width="0.5" />`;
+            svgContent += `<circle cx="0" cy="0" r="${rIn}" fill="#ffffff" stroke="#374151" stroke-width="0.5" />`;
 
             let paths = "";
             
@@ -249,7 +249,7 @@
                 }
             } else {
                 // Absolute positioning using Gray Code
-                const bits = Math.ceil(Math.log2(nMarkers));
+                const bits = Math.max(1, Math.ceil(Math.log2(Math.max(2, nMarkers))));
                 const maxSteps = Math.pow(2, bits); 
                 const angleStep = 360 / maxSteps; 
                 
@@ -267,7 +267,7 @@
             }
 
             // Render all dark markers at once for performance
-            svgContent += `<path d="${paths}" fill="var(--canvas-svg-dark)" />`;
+            svgContent += `<path d="${paths}" fill="#1e293b" />`;
             
             // Apply to DOM, centered in the right panel
             const viewBoxSize = (rOut * 2) + 20;
